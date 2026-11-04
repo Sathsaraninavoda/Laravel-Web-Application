@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authentication Flow Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        button { padding: 10px 15px; margin: 5px; }
+        pre { background: #f5f5f5; padding: 10px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>Vendor Authentication Flow Test</h1>
+    
+    <div class="test-section">
+        <h2>1. Test Vendor Login</h2>
+        <button onclick="testVendorLogin()">Login as Test Vendor</button>
+        <button onclick="clearAuth()">Clear Auth Data</button>
+        <div id="loginResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. Check LocalStorage</h2>
+        <button onclick="checkLocalStorage()">Check LocalStorage</button>
+        <div id="storageResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. Test Role Detection</h2>
+        <button onclick="testRoleDetection()">Test Role Detection</button>
+        <div id="roleResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>4. Test Dashboard Initialization</h2>
+        <button onclick="testDashboardInit()">Initialize Dashboard</button>
+        <div id="dashboardResult"></div>
+    </div>
+
+    <script>
+        // Include the auth API
+        const API_BASE = 'http://localhost:8000/api';
+        
+        class TestAuthAPI {
+            constructor() {
+                this.baseURL = API_BASE;
+                this.token = localStorage.getItem('auth_token');
+            }
+
+            getHeaders() {
+                const headers = {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                };
+                
+                if (this.token) {
+                    headers['Authorization'] = `Bearer ${this.token}`;
+                }
+                
+                return headers;
+            }
+
+            storeAuthData(data) {
+                localStorage.setItem('auth_token', data.token);
+                localStorage.setItem('user', JSON.stringify(data.user));
+                this.token = data.token;
+                
+                // Ensure role is properly stored
+                if (data.user && data.user.role) {
+                    localStorage.setItem('user_role', data.user.role);
+                }
+                
+                console.log('Auth data stored:', {
+                    token: data.token ? 'Present' : 'Missing',
+                    user: data.user,
+                    role: data.user ? data.user.role : 'undefined'
+                });
+            }
+
+            getUser() {
+                const userData = localStorage.getItem('user');
+                if (userData) {
+                    const user = JSON.parse(userData);
+                    // Ensure role is present, fallback to stored role if missing
+                    if (!user.role) {
+                        const storedRole = localStorage.getItem('user_role');
+                        if (storedRole) {
+                            user.role = storedRole;
+                        }
+                    }
+                    return user;
+                }
+                return null;
+            }
+
+            clearAuthData() {
+                localStorage.removeItem('auth_token');
+                localStorage.removeItem('user');
+                localStorage.removeItem('user_role');
+                this.token = null;
+                console.log('Auth data cleared');
+            }
+
+            async login(email, password) {
+                try {
+                    const response = await fetch(`${this.baseURL}/auth/login`, {
+                        method: 'POST',
+                        headers: this.getHeaders(),
+                        body: JSON.stringify({ email, password })
+                    });
+
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        this.storeAuthData(data);
+                        return { success: true, data };
+                    } else {
+                        return { success: false, error: data.message };
+                    }
+                } catch (error) {
+                    return { success: false, error: error.message };
+                }
+            }
+        }
+
+        const testAuth = new TestAuthAPI();
+
+        async function testVendorLogin() {
+            const result = document.getElementById('loginResult');
+            result.innerHTML = '<div class="info">Attempting to login as test vendor...</div>';
+            
+            const loginResult = await testAuth.login('testvendor@example.com', 'password123');
+            
+            if (loginResult.success) {
+                result.innerHTML = `
+                    <div class="success">✅ Login successful!</div>
+                    <pre>${JSON.stringify(loginResult.data, null, 2)}</pre>
+                `;
+            } else {
+                result.innerHTML = `
+                    <div class="error">❌ Login failed: ${loginResult.error}</div>
+                `;
+            }
+        }
+
+        function clearAuth() {
+            testAuth.clearAuthData();
+            document.getElementById('loginResult').innerHTML = '<div class="info">Auth data cleared</div>';
+        }
+
+        function checkLocalStorage() {
+            const result = document.getElementById('storageResult');
+            const token = localStorage.getItem('auth_token');
+            const user = localStorage.getItem('user');
+            const role = localStorage.getItem('user_role');
+            
+            result.innerHTML = `
+                <div><strong>Auth Token:</strong> ${token ? 'Present' : 'Missing'}</div>
+                <div><strong>User Data:</strong></div>
+                <pre>${user || 'Not found'}</pre>
+                <div><strong>Stored Role:</strong> ${role || 'Not found'}</div>
+                <div><strong>Parsed User:</strong></div>
+                <pre>${user ? JSON.stringify(JSON.parse(user), null, 2) : 'Not found'}</pre>
+            `;
+        }
+
+        function testRoleDetection() {
+            const result = document.getElementById('roleResult');
+            const user = testAuth.getUser();
+            
+            if (user) {
+                result.innerHTML = `
+                    <div class="success">✅ User found</div>
+                    <div><strong>Name:</strong> ${user.name}</div>
+                    <div><strong>Email:</strong> ${user.email}</div>
+                    <div><strong>Role:</strong> ${user.role || 'UNDEFINED'}</div>
+                    <div><strong>Role Type:</strong> ${typeof user.role}</div>
+                    <div><strong>Is Vendor:</strong> ${user.role === 'vendor' ? 'Yes' : 'No'}</div>
+                `;
+            } else {
+                result.innerHTML = '<div class="error">❌ No user found</div>';
+            }
+        }
+
+        function testDashboardInit() {
+            const result = document.getElementById('dashboardResult');
+            const user = testAuth.getUser();
+            
+            if (user) {
+                // Simulate dashboard initialization
+                let currentRole = user.role || 'customer';
+                window.currentRole = currentRole;
+                
+                result.innerHTML = `
+                    <div class="success">✅ Dashboard initialized</div>
+                    <div><strong>Current Role:</strong> ${currentRole}</div>
+                    <div><strong>Window.currentRole:</strong> ${window.currentRole}</div>
+                    <div><strong>Dashboard Title:</strong> ${currentRole.charAt(0).toUpperCase() + currentRole.slice(1)} Dashboard</div>
+                    <div><strong>Should show vendor sections:</strong> ${currentRole === 'vendor' ? 'Yes' : 'No'}</div>
+                `;
+            } else {
+                result.innerHTML = '<div class="error">❌ Cannot initialize dashboard - no user found</div>';
+            }
+        }
+    </script>
+</body>
+</html>

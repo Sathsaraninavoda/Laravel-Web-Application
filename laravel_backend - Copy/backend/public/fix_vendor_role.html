@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Quick Vendor Role Fix</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .fix-button { background: #28a745; color: white; padding: 15px 30px; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .error { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Quick Vendor Role Fix</h1>
+    <p>This will fix the localStorage issue where vendor role is showing as undefined.</p>
+    
+    <button class="fix-button" onclick="fixVendorRole()">Fix Vendor Role Now</button>
+    <div id="result"></div>
+    
+    <script>
+        function fixVendorRole() {
+            const result = document.getElementById('result');
+            
+            // Check current localStorage
+            const userData = localStorage.getItem('user');
+            if (!userData) {
+                result.innerHTML = '<div class="status error">❌ No user data found. Please login first.</div>';
+                return;
+            }
+            
+            try {
+                const user = JSON.parse(userData);
+                
+                // Fix the role if it's undefined or missing
+                if (!user.role || user.role === undefined) {
+                    // If this is the test vendor, set role to vendor
+                    if (user.email === 'testvendor@example.com' || user.email === 'vendor@example.com') {
+                        user.role = 'vendor';
+                        localStorage.setItem('user', JSON.stringify(user));
+                        localStorage.setItem('user_role', 'vendor');
+                        
+                        result.innerHTML = `
+                            <div class="status success">
+                                ✅ FIXED! Vendor role applied to ${user.name}
+                                <br>Role: ${user.role}
+                                <br>Email: ${user.email}
+                                <br><br>
+                                <strong>Next Steps:</strong>
+                                <br>1. Refresh your dashboard page
+                                <br>2. You should now see "Vendor Dashboard" 
+                                <br>3. Navigation should show vendor-specific options
+                            </div>
+                        `;
+                    } else {
+                        result.innerHTML = `
+                            <div class="status error">
+                                ❌ Cannot auto-fix role for ${user.email}
+                                <br>This fix is only for known vendor accounts.
+                            </div>
+                        `;
+                    }
+                } else {
+                    result.innerHTML = `
+                        <div class="status success">
+                            ✅ Role already correct: ${user.role}
+                            <br>User: ${user.name} (${user.email})
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                result.innerHTML = `
+                    <div class="status error">
+                        ❌ Error parsing user data: ${error.message}
+                    </div>
+                `;
+            }
+        }
+        
+        // Auto-check on load
+        window.addEventListener('load', function() {
+            const userData = localStorage.getItem('user');
+            if (userData) {
+                try {
+                    const user = JSON.parse(userData);
+                    document.getElementById('result').innerHTML = `
+                        <div>Current user: ${user.name} (${user.email})</div>
+                        <div>Current role: ${user.role || 'UNDEFINED'}</div>
+                    `;
+                } catch (e) {
+                    document.getElementById('result').innerHTML = '<div class="status error">Error reading user data</div>';
+                }
+            }
+        });
+    </script>
+</body>
+</html>

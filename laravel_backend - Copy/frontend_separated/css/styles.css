@@ -1,0 +1,159 @@
+:root { 
+    --primary-color: #8b5127;
+    --secondary-color: #D2691E;
+    --accent-color: #FFD700;
+    --text-dark: #2C1810;
+    --bg-light: #FFF8DC;
+    --border-color: #DEB887;
+}
+
+body {
+    background-image: url('dashboard_wallpaper.jpg'); /* Replace with the path to your image */
+    background-size: cover; /* This will make sure the image covers the entire background */
+    background-position: center center; /* This centers the image */
+    background-repeat: no-repeat; /* This prevents the image from repeating */
+    background-attachment: fixed; /* This makes the background image fixed when scrolling */
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: var(--text-dark);
+}
+
+.navbar {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    box-shadow: 0 2px 15px rgba(139, 69, 19, 0.3);
+}
+
+.navbar-brand {
+    font-weight: bold;
+    font-size: 1.5rem;
+    color: var(--accent-color) !important;
+}
+
+.sidebar {
+    background: linear-gradient(180deg, #FFFFFF 0%, var(--bg-light) 100%);
+    border-right: 2px solid var(--border-color);
+    min-height: calc(100vh - 56px);
+    box-shadow: 2px 0 10px rgba(139, 69, 19, 0.1);
+}
+
+.nav-link {
+    color: var(--text-dark);
+    padding: 12px 20px;
+    margin: 2px 0;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.nav-link:hover, .nav-link.active {
+    background: linear-gradient(135deg, var(--secondary-color) 0%, var(--primary-color) 100%);
+    color: white;
+    transform: translateX(5px);
+}
+
+.dashboard-card {
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 8px 25px rgba(139, 69, 19, 0.15);
+    border: 1px solid var(--border-color);
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.dashboard-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 35px rgba(139, 69, 19, 0.25);
+}
+
+.card-header {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    color: white;
+    font-weight: bold;
+    border-bottom: 3px solid var(--accent-color);
+}
+
+.stat-card {
+    background: linear-gradient(135deg, white 0%, var(--bg-light) 100%);
+    border-left: 5px solid var(--secondary-color);
+}
+
+.stat-number {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+.role-indicator {
+    display: inline-block;
+    padding: 5px 15px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.role-admin { background: #dc3545; color: white; }
+.role-vendor { background: #28a745; color: white; }
+.role-customer { background: #007bff; color: white; }
+
+.quick-action-btn {
+    background: linear-gradient(135deg, var(--accent-color) 0%, #FFA500 100%);
+    border: 2px solid #FF8C00;
+    color: var(--text-dark);
+    font-weight: bold;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+    padding: 10px 15px; 
+    margin: 10px; 
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.quick-action-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 5px 15px rgba(255, 215, 0, 0.4);
+}
+
+.content-section {
+    display: none;
+}
+
+.content-section.active {
+    display: block;
+}
+
+.table {
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.table thead {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    color: white;
+}
+
+.wishlist-item, .product-item, .order-item {
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 10px;
+    background: rgb(214, 165, 100);
+    transition: all 0.3s ease;
+}
+
+.wishlist-item:hover, .product-item:hover, .order-item:hover {
+    box-shadow: 0 5px 15px rgba(139, 69, 19, 0.15);
+    transform: translateY(-2px);
+}
+
+.wishlist-img {
+    width: 100px;
+    height: 100px;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+.product-img {
+    width: 100px;
+    height: 100px;
+    object-fit: cover;
+    border-radius: 8px; /* Optional for rounded corners */
+}
+

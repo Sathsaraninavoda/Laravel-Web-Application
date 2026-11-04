@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vendor Authentication Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { color: green; font-weight: bold; }
+        .error { color: red; font-weight: bold; }
+        .info { color: blue; }
+        button { padding: 10px 15px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        pre { background: #f8f9fa; padding: 10px; overflow-x: auto; border-radius: 4px; border: 1px solid #e9ecef; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .status.success { background: #d4edda; border: 1px solid #c3e6cb; }
+        .status.error { background: #f8d7da; border: 1px solid #f5c6cb; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Vendor Authentication Flow Test</h1>
+        <p>This page tests the vendor authentication and role classification issue.</p>
+        
+        <div class="test-section">
+            <h2>1. Clear Previous Auth Data</h2>
+            <button onclick="clearAuth()">Clear All Auth Data</button>
+            <div id="clearResult"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>2. Test Vendor Login</h2>
+            <p>Login as: <strong>testvendor@example.com</strong> / <strong>password123</strong></p>
+            <button onclick="testVendorLogin()">Login as Test Vendor</button>
+            <div id="loginResult"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>3. Check LocalStorage Data</h2>
+            <button onclick="checkLocalStorage()">Inspect LocalStorage</button>
+            <div id="storageResult"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>4. Test Role Detection</h2>
+            <button onclick="testRoleDetection()">Test Role Detection</button>
+            <div id="roleResult"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>5. Simulate Dashboard Initialization</h2>
+            <button onclick="testDashboardInit()">Initialize Dashboard</button>
+            <div id="dashboardResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>6. Fix and Test</h2>
+            <button onclick="fixAndTest()">Apply Fix & Test</button>
+            <div id="fixResult"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000/api';
+        
+        // Enhanced AuthAPI with debugging
+        class TestAuthAPI {
+            constructor() {
+                this.baseURL = API_BASE;
+                this.token = localStorage.getItem('auth_token');
+            }
+
+            getHeaders() {
+                return {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    ...(this.token && { 'Authorization': `Bearer ${this.token}` })
+                };
+            }
+
+            storeAuthData(data) {
+                console.log('🔄 Storing auth data:', data);
+                
+                localStorage.setItem('auth_token', data.token);
+                localStorage.setItem('user', JSON.stringify(data.user));
+                this.token = data.token;
+                
+                // CRITICAL FIX: Ensure role is properly stored
+                if (data.user && data.user.role) {
+                    localStorage.setItem('user_role', data.user.role);
+                    console.log('✅ Role stored separately:', data.user.role);
+                }
+                
+                console.log('📦 Auth data stored:', {
+                    token: data.token ? 'Present' : 'Missing',
+                    user: data.user,
+                    role: data.user ? data.user.role : 'undefined'
+                });
+            }
+
+            getUser() {
+                const userData = localStorage.getItem('user');
+                if (userData) {
+                    const user = JSON.parse(userData);
+                    console.log('👤 Retrieved user from localStorage:', user);
+                    
+                    // CRITICAL FIX: Ensure role is present
+                    if (!user.role || user.role === undefined) {
+                        const storedRole = localStorage.getItem('user_role');
+                        if (storedRole) {
+                            user.role = storedRole;
+                            console.log('🔧 Fixed missing role from separate storage:', storedRole);
+                        } else {
+                            console.warn('⚠️ No role found in user data or separate storage');
+                        }
+                    }
+                    
+                    return user;
+                }
+                return null;
+            }
+
+            clearAuthData() {
+                localStorage.removeItem('auth_token');
+                localStorage.removeItem('user');
+                localStorage.removeItem('user_role');
+                this.token = null;
+                console.log('🗑️ Auth data cleared');
+            }
+
+            async login(email, password) {
+                try {
+                    console.log('🔐 Attempting login for:', email);
+                    
+                    const response = await fetch(`${this.baseURL}/auth/login`, {
+                        method: 'POST',
+                        headers: this.getHeaders(),
+                        body: JSON.stringify({ email, password })
+                    });
+
+                    const data = await response.json();
+                    console.log('📡 Login response:', data);
+                    
+                    if (data.success) {
+                        this.storeAuthData(data);
+                        return { success: true, data };
+                    } else {
+                        return { success: false, error: data.message };
+                    }
+                } catch (error) {
+                    console.error('❌ Login error:', error);
+                    return { success: false, error: error.message };
+                }
+            }
+        }
+
+        const testAuth = new TestAuthAPI();
+
+        function clearAuth() {
+            testAuth.clearAuthData();
+            document.getElementById('clearResult').innerHTML = '<div class="status success">✅ All authentication data cleared</div>';
+        }
+
+        async function testVendorLogin() {
+            const result = document.getElementById('loginResult');
+            result.innerHTML = '<div class="info">🔄 Attempting to login as test vendor...</div>';
+            
+            const loginResult = await testAuth.login('testvendor@example.com', 'password123');
+            
+            if (loginResult.success) {
+                result.innerHTML = `
+                    <div class="status success">✅ Login successful!</div>
+                    <div><strong>User:</strong> ${loginResult.data.user.name}</div>
+                    <div><strong>Email:</strong> ${loginResult.data.user.email}</div>
+                    <div><strong>Role:</strong> ${loginResult.data.user.role}</div>
+                    <pre>${JSON.stringify(loginResult.data, null, 2)}</pre>
+                `;
+            } else {
+                result.innerHTML = `
+                    <div class="status error">❌ Login failed: ${loginResult.error}</div>
+                `;
+            }
+        }
+
+        function checkLocalStorage() {
+            const result = document.getElementById('storageResult');
+            const token = localStorage.getItem('auth_token');
+            const user = localStorage.getItem('user');
+            const role = localStorage.getItem('user_role');
+            
+            let userObj = null;
+            try {
+                userObj = user ? JSON.parse(user) : null;
+            } catch (e) {
+                console.error('Error parsing user data:', e);
+            }
+            
+            result.innerHTML = `
+                <div><strong>🔑 Auth Token:</strong> ${token ? '✅ Present' : '❌ Missing'}</div>
+                <div><strong>👤 User Data:</strong> ${user ? '✅ Present' : '❌ Missing'}</div>
+                <div><strong>🏷️ Stored Role:</strong> ${role || '❌ Not found'}</div>
+                <div><strong>📋 Raw User JSON:</strong></div>
+                <pre>${user || 'Not found'}</pre>
+                <div><strong>🔍 Parsed User Object:</strong></div>
+                <pre>${userObj ? JSON.stringify(userObj, null, 2) : 'Not found'}</pre>
+                <div><strong>🎭 Role in User Object:</strong> ${userObj ? (userObj.role || 'UNDEFINED') : 'N/A'}</div>
+            `;
+        }
+
+        function testRoleDetection() {
+            const result = document.getElementById('roleResult');
+            const user = testAuth.getUser();
+            
+            if (user) {
+                const roleStatus = user.role === 'vendor' ? 'success' : 'error';
+                result.innerHTML = `
+                    <div class="status ${roleStatus}">
+                        ${user.role === 'vendor' ? '✅ Vendor role detected correctly!' : '❌ Role detection failed!'}
+                    </div>
+                    <div><strong>👤 Name:</strong> ${user.name}</div>
+                    <div><strong>📧 Email:</strong> ${user.email}</div>
+                    <div><strong>🎭 Role:</strong> ${user.role || 'UNDEFINED'}</div>
+                    <div><strong>🔢 Role Type:</strong> ${typeof user.role}</div>
+                    <div><strong>✅ Is Vendor:</strong> ${user.role === 'vendor' ? 'YES' : 'NO'}</div>
+                    <div><strong>❌ Is Customer:</strong> ${user.role === 'customer' ? 'YES' : 'NO'}</div>
+                `;
+            } else {
+                result.innerHTML = '<div class="status error">❌ No user found in localStorage</div>';
+            }
+        }
+
+        function testDashboardInit() {
+            const result = document.getElementById('dashboardResult');
+            const user = testAuth.getUser();
+            
+            if (user) {
+                let currentRole = user.role || 'customer';
+                window.currentRole = currentRole;
+                
+                const dashboardConfig = {
+                    vendor: {
+                        title: 'Vendor Dashboard',
+                        sections: ['Dashboard', 'My Products', 'My Orders'],
+                        canManageProducts: true,
+                        canViewOrders: true
+                    },
+                    customer: {
+                        title: 'Customer Dashboard', 
+                        sections: ['Dashboard', 'Orders', 'Profile'],
+                        canManageProducts: false,
+                        canViewOrders: true
+                    }
+                };
+                
+                const config = dashboardConfig[currentRole] || dashboardConfig.customer;
+                const status = currentRole === 'vendor' ? 'success' : 'error';
+                
+                result.innerHTML = `
+                    <div class="status ${status}">
+                        ${currentRole === 'vendor' ? '✅ Vendor dashboard initialized!' : '❌ Defaulted to customer dashboard!'}
+                    </div>
+                    <div><strong>🎭 Current Role:</strong> ${currentRole}</div>
+                    <div><strong>🌐 Window.currentRole:</strong> ${window.currentRole}</div>
+                    <div><strong>📊 Dashboard Title:</strong> ${config.title}</div>
+                    <div><strong>📝 Available Sections:</strong> ${config.sections.join(', ')}</div>
+                    <div><strong>📦 Can Manage Products:</strong> ${config.canManageProducts ? 'YES' : 'NO'}</div>
+                    <div><strong>📋 Can View Orders:</strong> ${config.canViewOrders ? 'YES' : 'NO'}</div>
+                `;
+            } else {
+                result.innerHTML = '<div class="status error">❌ Cannot initialize dashboard - no user found</div>';
+            }
+        }
+
+        function fixAndTest() {
+            const result = document.getElementById('fixResult');
+            
+            // Apply the fix to localStorage
+            const user = testAuth.getUser();
+            if (user) {
+                if (!user.role || user.role === undefined) {
+                    // Try to fix from API call or set to vendor if this is the test vendor
+                    if (user.email === 'testvendor@example.com') {
+                        user.role = 'vendor';
+                        localStorage.setItem('user', JSON.stringify(user));
+                        localStorage.setItem('user_role', 'vendor');
+                        
+                        result.innerHTML = `
+                            <div class="status success">✅ FIXED! Applied vendor role to test user</div>
+                            <div>Now test the dashboard initialization again.</div>
+                        `;
+                    } else {
+                        result.innerHTML = `
+                            <div class="status error">❌ Cannot auto-fix - unknown user</div>
+                        `;
+                    }
+                } else {
+                    result.innerHTML = `
+                        <div class="status success">✅ Role already present: ${user.role}</div>
+                    `;
+                }
+            } else {
+                result.innerHTML = `
+                    <div class="status error">❌ No user to fix - please login first</div>
+                `;
+            }
+        }
+
+        // Auto-check on page load
+        window.addEventListener('load', function() {
+            console.log('🚀 Vendor Authentication Test Page Loaded');
+            checkLocalStorage();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fix Auth Token - Vendor Login</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: #f8f9fa; padding: 20px; }
+        .fix-container { max-width: 600px; margin: 0 auto; }
+        .status-box { padding: 15px; margin: 10px 0; border-radius: 8px; }
+        .success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .error { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .info { background: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; }
+        .warning { background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 4px; font-size: 12px; }
+        .btn-custom { margin: 5px; }
+    </style>
+</head>
+<body>
+    <div class="fix-container">
+        <h1>🔧 Fix Auth Token Issue</h1>
+        <p>This will fix the "auth token null" problem and get you logged in as a vendor.</p>
+        
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>Step 1: Check Current Status</h5>
+            </div>
+            <div class="card-body">
+                <button class="btn btn-info btn-custom" onclick="checkCurrentStatus()">Check Auth Status</button>
+                <div id="statusResult"></div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>Step 2: Clear & Reset Auth Data</h5>
+            </div>
+            <div class="card-body">
+                <button class="btn btn-warning btn-custom" onclick="clearAuthData()">Clear All Auth Data</button>
+                <div id="clearResult"></div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>Step 3: Login as Vendor (Fixed Method)</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <label class="form-label">Email:</label>
+                        <input type="email" id="loginEmail" class="form-control" value="testvendor@example.com">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Password:</label>
+                        <input type="password" id="loginPassword" class="form-control" value="password123">
+                    </div>
+                </div>
+                <button class="btn btn-success btn-custom mt-3" onclick="fixedVendorLogin()">Login with Fixed Method</button>
+                <div id="loginResult"></div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>Step 4: Verify Token & Access Dashboard</h5>
+            </div>
+            <div class="card-body">
+                <button class="btn btn-primary btn-custom" onclick="verifyTokenAndAccess()">Verify & Access Dashboard</button>
+                <div id="verifyResult"></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5>Debug Information</h5>
+            </div>
+            <div class="card-body">
+                <button class="btn btn-secondary btn-custom" onclick="showDebugInfo()">Show Debug Info</button>
+                <div id="debugInfo"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Enhanced AuthAPI with token persistence fix
+        class FixedAuthAPI {
+            constructor() {
+                this.baseURL = 'http://localhost:8000/api';
+                this.token = localStorage.getItem('auth_token');
+                console.log('🔧 FixedAuthAPI initialized with token:', this.token);
+            }
+
+            getHeaders() {
+                const headers = {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                };
+                
+                if (this.token) {
+                    headers['Authorization'] = `Bearer ${this.token}`;
+                }
+                
+                console.log('📡 Request headers:', headers);
+                return headers;
+            }
+
+            // FIXED: Enhanced token storage with multiple fallbacks
+            storeAuthData(data) {
+                console.log('💾 Storing auth data with enhanced method:', data);
+                
+                try {
+                    // Store token with multiple methods for reliability
+                    localStorage.setItem('auth_token', data.token);
+                    localStorage.setItem('bearer_token', data.token); // Backup
+                    sessionStorage.setItem('auth_token', data.token); // Session backup
+                    
+                    // Store user data with role backup
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    localStorage.setItem('user_role', data.user.role);
+                    localStorage.setItem('user_email', data.user.email);
+                    localStorage.setItem('user_name', data.user.name);
+                    
+                    // Session management
+                    localStorage.setItem('session_active', 'true');
+                    localStorage.setItem('login_time', new Date().toISOString());
+                    
+                    // Update instance token
+                    this.token = data.token;
+                    
+                    console.log('✅ Auth data stored successfully');
+                    console.log('🔑 Token length:', data.token.length);
+                    console.log('👤 User:', data.user.name, '(' + data.user.role + ')');
+                    
+                    return true;
+                } catch (error) {
+                    console.error('❌ Error storing auth data:', error);
+                    return false;
+                }
+            }
+
+            // FIXED: Enhanced token retrieval with fallbacks
+            getStoredToken() {
+                let token = localStorage.getItem('auth_token') || 
+                           localStorage.getItem('bearer_token') || 
+                           sessionStorage.getItem('auth_token');
+                           
+                console.log('🔍 Retrieved token:', token ? 'Found (' + token.substring(0, 10) + '...)' : 'NULL');
+                return token;
+            }
+
+            // FIXED: Enhanced user retrieval
+            getUser() {
+                try {
+                    const userData = localStorage.getItem('user');
+                    if (userData) {
+                        const user = JSON.parse(userData);
+                        
+                        // Ensure role is present
+                        if (!user.role) {
+                            user.role = localStorage.getItem('user_role') || 'customer';
+                        }
+                        
+                        console.log('👤 Retrieved user:', user);
+                        return user;
+                    }
+                } catch (error) {
+                    console.error('❌ Error retrieving user:', error);
+                }
+                return null;
+            }
+
+            clearAuthData() {
+                console.log('🗑️ Clearing all auth data');
+                
+                // Clear all possible storage locations
+                localStorage.removeItem('auth_token');
+                localStorage.removeItem('bearer_token');
+                localStorage.removeItem('user');
+                localStorage.removeItem('user_role');
+                localStorage.removeItem('user_email');
+                localStorage.removeItem('user_name');
+                localStorage.removeItem('session_active');
+                localStorage.removeItem('login_time');
+                sessionStorage.removeItem('auth_token');
+                
+                this.token = null;
+            }
+
+            // FIXED: Enhanced login with better error handling
+            async login(email, password) {
+                console.log('🔐 Attempting fixed login for:', email);
+                
+                try {
+                    const response = await fetch(`${this.baseURL}/auth/login`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({ 
+                            email: email.trim(), 
+                            password: password 
+                        })
+                    });
+
+                    console.log('📡 Response status:', response.status);
+                    console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+
+                    const data = await response.json();
+                    console.log('📦 Login response data:', data);
+                    
+                    if (data.success && data.token && data.user) {
+                        const stored = this.storeAuthData(data);
+                        if (stored) {
+                            return { success: true, data, message: 'Login successful with token stored' };
+                        } else {
+                            return { success: false, error: 'Failed to store auth data' };
+                        }
+                    } else {
+                        return { 
+                            success: false, 
+                            error: data.message || 'Invalid login response format',
+                            details: data
+                        };
+                    }
+                } catch (error) {
+                    console.error('❌ Login error:', error);
+                    return { 
+                        success: false, 
+                        error: error.message,
+                        type: 'network_error'
+                    };
+                }
+            }
+
+            // Test token validity
+            async testToken() {
+                if (!this.token) {
+                    return { valid: false, error: 'No token found' };
+                }
+
+                try {
+                    const response = await fetch(`${this.baseURL}/auth/profile`, {
+                        headers: this.getHeaders()
+                    });
+
+                    const data = await response.json();
+                    return { 
+                        valid: response.ok && data.success, 
+                        data: data,
+                        status: response.status
+                    };
+                } catch (error) {
+                    return { valid: false, error: error.message };
+                }
+            }
+        }
+
+        const fixedAuth = new FixedAuthAPI();
+
+        function checkCurrentStatus() {
+            const result = document.getElementById('statusResult');
+            
+            const token = fixedAuth.getStoredToken();
+            const user = fixedAuth.getUser();
+            const sessionActive = localStorage.getItem('session_active');
+            
+            let status = '';
+            if (!token) {
+                status = '<div class="status-box error">❌ Auth Token: NULL (This is the problem!)</div>';
+            } else {
+                status = `<div class="status-box success">✅ Auth Token: Present (${token.substring(0, 20)}...)</div>`;
+            }
+            
+            status += user ? 
+                `<div class="status-box success">✅ User Data: ${user.name} (${user.role})</div>` :
+                '<div class="status-box error">❌ User Data: Missing</div>';
+                
+            status += sessionActive === 'true' ?
+                '<div class="status-box success">✅ Session: Active</div>' :
+                '<div class="status-box warning">⚠️ Session: Inactive</div>';
+            
+            result.innerHTML = status;
+        }
+
+        function clearAuthData() {
+            fixedAuth.clearAuthData();
+            document.getElementById('clearResult').innerHTML = 
+                '<div class="status-box success">✅ All auth data cleared. Ready for fresh login.</div>';
+        }
+
+        async function fixedVendorLogin() {
+            const result = document.getElementById('loginResult');
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            result.innerHTML = '<div class="status-box info">🔄 Attempting login with fixed method...</div>';
+            
+            try {
+                const loginResult = await fixedAuth.login(email, password);
+                
+                if (loginResult.success) {
+                    result.innerHTML = `
+                        <div class="status-box success">
+                            ✅ LOGIN SUCCESSFUL!
+                            <br><strong>User:</strong> ${loginResult.data.user.name}
+                            <br><strong>Email:</strong> ${loginResult.data.user.email}
+                            <br><strong>Role:</strong> ${loginResult.data.user.role}
+                            <br><strong>Token:</strong> ${loginResult.data.token.substring(0, 30)}...
+                            <br><br>🎉 Auth token is now properly stored!
+                        </div>
+                    `;
+                } else {
+                    result.innerHTML = `
+                        <div class="status-box error">
+                            ❌ LOGIN FAILED: ${loginResult.error}
+                            <br><strong>Type:</strong> ${loginResult.type || 'unknown'}
+                            ${loginResult.details ? '<br><strong>Details:</strong> ' + JSON.stringify(loginResult.details) : ''}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                result.innerHTML = `
+                    <div class="status-box error">
+                        ❌ UNEXPECTED ERROR: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        async function verifyTokenAndAccess() {
+            const result = document.getElementById('verifyResult');
+            
+            // Refresh token from storage
+            fixedAuth.token = fixedAuth.getStoredToken();
+            
+            if (!fixedAuth.token) {
+                result.innerHTML = '<div class="status-box error">❌ No token found. Please login first.</div>';
+                return;
+            }
+            
+            result.innerHTML = '<div class="status-box info">🔄 Verifying token...</div>';
+            
+            const tokenTest = await fixedAuth.testToken();
+            
+            if (tokenTest.valid) {
+                result.innerHTML = `
+                    <div class="status-box success">
+                        ✅ TOKEN VALID! Dashboard access confirmed.
+                        <br><br>
+                        <a href="/dashboard.html" class="btn btn-primary">Access Vendor Dashboard</a>
+                        <button class="btn btn-info" onclick="window.location.reload()">Refresh Page</button>
+                    </div>
+                `;
+            } else {
+                result.innerHTML = `
+                    <div class="status-box error">
+                        ❌ Token verification failed: ${tokenTest.error}
+                        <br>Status: ${tokenTest.status || 'unknown'}
+                        <br>Please login again.
+                    </div>
+                `;
+            }
+        }
+
+        function showDebugInfo() {
+            const result = document.getElementById('debugInfo');
+            
+            const debugData = {
+                localStorage: {
+                    auth_token: localStorage.getItem('auth_token'),
+                    bearer_token: localStorage.getItem('bearer_token'),
+                    user: localStorage.getItem('user'),
+                    user_role: localStorage.getItem('user_role'),
+                    session_active: localStorage.getItem('session_active')
+                },
+                sessionStorage: {
+                    auth_token: sessionStorage.getItem('auth_token')
+                },
+                instance: {
+                    token: fixedAuth.token,
+                    baseURL: fixedAuth.baseURL
+                }
+            };
+            
+            result.innerHTML = `
+                <div class="status-box info">
+                    <strong>Debug Information:</strong>
+                    <pre>${JSON.stringify(debugData, null, 2)}</pre>
+                </div>
+            `;
+        }
+
+        // Auto-check status on page load
+        window.addEventListener('load', function() {
+            console.log('🚀 Auth Token Fix Page Loaded');
+            checkCurrentStatus();
+        });
+    </script>
+</body>
+</html>
